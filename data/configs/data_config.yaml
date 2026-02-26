@@ -1,0 +1,41 @@
+# Central configuration for the entire data pipeline
+
+ingestion:
+  source: "HuggingFaceFW/fineweb-edu" # Dataset name on Hugging Face
+  subset: "sample-10BT"               # 10 Billion token sample subset
+  num_samples: 500000                 # Number of samples to pull
+  text_column: "text"                 # Column name that holds raw text
+  streaming: true                     # stream docs, never load full dataset to RAM
+
+
+cleaning:
+  min_length: 100                        # minimum characters per document
+  max_length: 100000                     # maximum characters per document
+  min_avg_word_length: 3                 # avg word length lower bound
+  max_avg_word_length: 10                # avg word length upper bound
+  max_symbol_to_word_ratio: 0.1          # max (symbol count / word count)
+  max_bullet_lines_ratio: 0.9            # max fraction of lines starting with bullets
+  min_alphanum_ratio: 0.7                # min fraction of alphanumeric chars in doc
+  dedup_enabled: true
+  minhash_num_perm: 128                  # number of permutations for MinHash
+  minhash_threshold: 0.85                # Jaccard similarity above this = duplicate
+
+tokenizer:
+  vocab_size: 32000
+  min_frequency: 2                       # merge only pairs appearing >= 2 times
+  special_tokens:
+    - "<|endoftext|>"
+    - "<|pad|>"
+    - "<|unk|>"
+    - "<|im_start|>"
+    - "<|im_end|>"
+  shard_size_tokens: 100000000           # 100M tokens per .bin shard file
+
+registry:
+  hf_repo_id: "adesh01/llm-playground-data-v1"
+  push_tokenizer: true
+  push_shards: false                     # set true only when shards are ready
+
+artifacts:
+  tokenizer_path: "artifacts/tokenizer.json"
+  shards_dir: "artifacts/shards/"
