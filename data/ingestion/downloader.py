@@ -1,3 +1,4 @@
+# data/ingestion/downloader.py
 import logging
 
 from dataclasses import dataclass
@@ -42,15 +43,12 @@ class DatasetDownloader:
             self.config.source,
             name=self.config.subset,
             split="train",
-            streaming=self.config.streaming,
-            trust_remote_code=True
+            streaming=self.config.streaming
         )
         logger.info(f"Dataset loaded. Will pull up to {self.config.num_samples} samples.")
         return self
 
     def iterate(self) -> Iterator[str]:
-        # TODO: yield text strings with tqdm progress bar
-        # skip empty strings silently, log total yielded at end
         """
         Yields raw text strings one document at a time.
 
@@ -62,15 +60,19 @@ class DatasetDownloader:
         """
         if self._dataset is None:
             raise RuntimeError("Call load() before iterate()")
-        count = 0
-        for doc in self._dataset:
-            if count >= self.config.num_samples:
-                break
-            text = doc.get(self.config.text_column, "").strip()
-            if text:
-                yield text
-                count += 1
-                pbar.update(1)
+
+        with tqdm(total=self.config.num_samples, desc="Downloading", unit="docs") as pbar:
+            count = 0
+            for doc in self._dataset:
+                if count >= self.config.num_samples:
+                    break
+                text = doc.get(self.config.text_column, "").strip()
+                if text:
+                    yield text
+                    count += 1
+                    pbar.update(1)
+
+        logger.info(f"Yielded {count} documents")
 
     def __repr__(self) -> str:
         return (f"DatasetDownloader(source='{self.config.source}', "
