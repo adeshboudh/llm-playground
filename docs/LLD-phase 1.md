@@ -27,10 +27,6 @@ data/
 │   └── hub_pusher.py        # HFHubPusher
 ├── configs/
 │   └── data_config.yaml     # All hyperparams in one place
-├── tests/
-│   ├── test_filters.py
-│   ├── test_tokenizer.py
-│   └── test_dedup.py
 └── pipeline.py              # Orchestrator — runs all steps in order
 ```
 
