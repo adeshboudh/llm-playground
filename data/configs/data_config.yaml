@@ -3,7 +3,7 @@
 ingestion:
   source: "HuggingFaceFW/fineweb-edu" # Dataset name on Hugging Face
   subset: "sample-10BT"               # 10 Billion token sample subset
-  num_samples: 100                 # Number of samples to pull
+  num_samples: 50000                  # Number of samples to pull
   text_column: "text"                 # Column name that holds raw text
   streaming: true                     # stream docs, never load full dataset to RAM
 
@@ -37,5 +37,5 @@ registry:
   push_shards: false                     # set true only when shards are ready
 
 artifacts:
-  tokenizer_path: "artifacts/tokenizer.json"
-  shards_dir: "artifacts/shards/"
+  tokenizer_path: artifacts/tokenizer.json
+  shards_dir: artifacts/shards

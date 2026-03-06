@@ -82,7 +82,7 @@ cleaning:
   max_length: 100000
   min_avg_word_length: 3
   max_avg_word_length: 10
-  max_symbol_to_word_ratio: 0.35    # Calibrated on real FineWeb-Edu data
+  max_symbol_to_word_ratio: 0.35 # Calibrated on real FineWeb-Edu data
   max_bullet_lines_ratio: 0.9
   minhash_num_perm: 128
   minhash_threshold: 0.85
@@ -123,13 +123,13 @@ Wraps HuggingFace `datasets` in streaming mode. Yields raw text strings one at a
 
 Applies 5 sequential filters. A document is rejected if **any** filter fails.
 
-| Filter | What it rejects | Config key |
-|---|---|---|
-| `LengthFilter` | Documents shorter or longer than character bounds | `min_length`, `max_length` |
-| `WordLengthFilter` | Docs with avg word length outside bounds (catches gibberish) | `min_avg_word_length`, `max_avg_word_length` |
-| `SymbolRatioFilter` | Docs where symbols-per-word exceeds threshold | `max_symbol_to_word_ratio` |
-| `BulletLinesFilter` | Docs that are mostly bullet points / list dumps | `max_bullet_lines_ratio` |
-| `AlphanumericFilter` | Docs with too few alphanumeric characters | hardcoded |
+| Filter               | What it rejects                                              | Config key                                   |
+| -------------------- | ------------------------------------------------------------ | -------------------------------------------- |
+| `LengthFilter`       | Documents shorter or longer than character bounds            | `min_length`, `max_length`                   |
+| `WordLengthFilter`   | Docs with avg word length outside bounds (catches gibberish) | `min_avg_word_length`, `max_avg_word_length` |
+| `SymbolRatioFilter`  | Docs where symbols-per-word exceeds threshold                | `max_symbol_to_word_ratio`                   |
+| `BulletLinesFilter`  | Docs that are mostly bullet points / list dumps              | `max_bullet_lines_ratio`                     |
+| `AlphanumericFilter` | Docs with too few alphanumeric characters                    | hardcoded                                    |
 
 **Calibration note:** `max_symbol_to_word_ratio` was empirically set to `0.35` after sampling real FineWeb-Edu documents. Real English prose has a natural symbol ratio of 0.15–0.32 (punctuation, apostrophes, quotes). The original value of `0.1` rejected 96% of valid documents.
 
@@ -145,6 +145,7 @@ Uses MinHash + LSH (Locality Sensitive Hashing) to detect near-duplicate documen
 - `reset()` clears all state — use only when starting a completely fresh pipeline run
 
 **Verified behavior:**
+
 - Original document: not flagged ✅
 - Near-duplicate (one sentence changed): flagged ✅
 - Completely different document: not flagged ✅
@@ -207,12 +208,16 @@ run_pipeline('data/configs/data_config.yaml')
 
 ```
 === PIPELINE REPORT ===
-{'total_seen': 100, 'total_passed': 96, 'pass_rate': 0.96,
- 'rejections_by_filter': {'length_filter': 0, 'word_length_filter': 0,
- 'symbol_ratio_filter': 4, 'bullet_lines_filter': 0, 'alphanum_filter': 0}}
-Dedup rate: 0.00%
-Total tokens: 80,656
+{'total_seen': 50000, 'total_passed': 48514, 'pass_rate': 0.9703,
+'rejections_by_filter': {'length_filter': 49, 'word_length_filter': 3,
+'symbol_ratio_filter': 1352, 'bullet_lines_filter': 82, 'alphanum_filter': 0}}
+Dedup rate: 0.03%
+Total tokens: 49,357,932
 Num shards: 1
+```
+
+```text
+Tokenizer vocab size: 32,000 (trained on ~50k docs / ~49M tokens)
 ```
 
 ---
@@ -229,12 +234,12 @@ pytest --tb=short -q
 
 ### Test Coverage
 
-| Test file | What it covers |
-|---|---|
-| `tests/test_filters.py` | Each filter individually — boundary conditions, edge cases |
-| `tests/test_deduplicator.py` | LSH state, near-dup detection, reset behavior |
-| `tests/test_tokenizer_trainer.py` | Train, encode, decode, save, load |
-| `tests/test_pipeline.py` | End-to-end pipeline — shard output, token count, pass rate |
+| Test file                         | What it covers                                             |
+| --------------------------------- | ---------------------------------------------------------- |
+| `tests/test_filters.py`           | Each filter individually — boundary conditions, edge cases |
+| `tests/test_deduplicator.py`      | LSH state, near-dup detection, reset behavior              |
+| `tests/test_tokenizer_trainer.py` | Train, encode, decode, save, load                          |
+| `tests/test_pipeline.py`          | End-to-end pipeline — shard output, token count, pass rate |
 
 ---
 

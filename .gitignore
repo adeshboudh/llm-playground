@@ -1,6 +1,16 @@
 /checkpoints
 /scratch
 
+# Artifacts — stored on HuggingFace Hub, not git
+artifacts/
+*.bin
+*.pt
+*.safetensors
+
+# Scratch temp files
+scratch/tmp*/
+.pytest_tmp/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
