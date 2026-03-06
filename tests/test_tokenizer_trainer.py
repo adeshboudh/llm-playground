@@ -1,12 +1,10 @@
 # tests/test_tokenizer_trainer.py
-import sys
+
 import uuid
 from pathlib import Path
 
 import pytest
 
-# Add project root to Python path
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from data.tokenizer.trainer import BPETokenizerTrainer
 

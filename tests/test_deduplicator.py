@@ -1,9 +1,4 @@
 # data/tests/test_deduplicator.py
-import sys
-from pathlib import Path
-
-# Add project root to Python path
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import pytest
 from data.cleaning.deduplicator import MinHashDeduplicator
@@ -91,3 +86,15 @@ class TestMinHashDeduplicator:
         # MinHashLSH raises ValueError when inserting duplicate key
         with pytest.raises(ValueError):
             d.is_duplicate("Different text", "doc_0")
+
+    def test_reset_clears_state(self):
+        """Reset should clear the LSH index and reset all counters."""
+        d = MinHashDeduplicator(threshold=0.8)
+        text = "Some unique text"
+        d.is_duplicate(text, "doc_0")
+        d.is_duplicate(text, "doc_1")
+        d.reset()
+        assert d.stats()["total_seen"] == 0
+        assert d.stats()["duplicates_found"] == 0
+        assert d.stats()["unique_docs"] == 0
+        assert d.stats()["dedup_rate"] == 0.0

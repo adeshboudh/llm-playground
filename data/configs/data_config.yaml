@@ -3,7 +3,7 @@
 ingestion:
   source: "HuggingFaceFW/fineweb-edu" # Dataset name on Hugging Face
   subset: "sample-10BT"               # 10 Billion token sample subset
-  num_samples: 500000                 # Number of samples to pull
+  num_samples: 100                 # Number of samples to pull
   text_column: "text"                 # Column name that holds raw text
   streaming: true                     # stream docs, never load full dataset to RAM
 
@@ -13,7 +13,7 @@ cleaning:
   max_length: 100000                     # maximum characters per document
   min_avg_word_length: 3                 # avg word length lower bound
   max_avg_word_length: 10                # avg word length upper bound
-  max_symbol_to_word_ratio: 0.1          # max (symbol count / word count)
+  max_symbol_to_word_ratio: 0.35          # max (symbol count / word count)
   max_bullet_lines_ratio: 0.9            # max fraction of lines starting with bullets
   min_alphanum_ratio: 0.7                # min fraction of alphanumeric chars in doc
   dedup_enabled: true

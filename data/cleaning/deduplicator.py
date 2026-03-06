@@ -70,3 +70,9 @@ class MinHashDeduplicator:
             "unique_docs": self._seen_count - self._dup_count,
             "dedup_rate": round(self.dedup_rate, 4)
         }
+
+    def reset(self) -> None:
+        """Clears the LSH index and resets all counters."""
+        self.lsh = MinHashLSH(threshold=self.threshold, num_perm=self.num_perm)
+        self._seen_count = 0
+        self._dup_count = 0

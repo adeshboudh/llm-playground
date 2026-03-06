@@ -60,17 +60,24 @@ class BPETokenizerTrainer:
         self.tokenizer = tokenizer
         return self
 
-    def save(self, path: str) -> None:
-        """Saves tokenizer.json to disk, creating parent directories if needed."""
+    def save(self, path: str) -> Path:
+        """Saves tokenizer.json to disk. If path is a directory, saves tokenizer.json inside it."""
+        print(f"DEBUG save() called with: {repr(path)}")
         self._require_trained()
-        Path(path).parent.mkdir(parents=True, exist_ok=True)
-        self.tokenizer.save(path)
+        save_path = Path(path)
+        if save_path.suffix == "":
+            save_path = save_path / "tokenizer.json"
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+        self.tokenizer.save(save_path.as_posix())
+        return save_path
 
     @classmethod
     def load(cls, path: str) -> "BPETokenizerTrainer":
-        """Loads a tokenizer from a file path."""
+        load_path = Path(path)
+        if load_path.is_dir():
+            load_path = load_path / "tokenizer.json"
         instance = cls()
-        instance.tokenizer = Tokenizer.from_file(path)
+        instance.tokenizer = Tokenizer.from_file(load_path.as_posix())
         return instance
 
     def encode(self, text: str) -> list[int]:

@@ -1,14 +1,10 @@
 # tests/test_encoder.py
 
-import sys
 import numpy as np
 import pytest
 import shutil
 import uuid
 from pathlib import Path
-
-# Add project root to Python path
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from data.tokenizer.encoder import ShardEncoder
 

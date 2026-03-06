@@ -1,9 +1,4 @@
 # tests/test_downloader.py
-import sys
-from pathlib import Path
-
-# Add project root to Python path
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import pytest
 from data.ingestion.downloader import DatasetDownloader, DownloaderConfig
