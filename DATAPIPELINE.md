@@ -73,7 +73,7 @@ All parameters live in `data/configs/data_config.yaml`. Never hardcode values in
 ingestion:
   source: HuggingFaceFW/fineweb-edu
   subset: sample-10BT
-  num_samples: 100
+  num_samples: 50000
   text_column: text
   streaming: true
 
