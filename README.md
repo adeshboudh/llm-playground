@@ -1,7 +1,3 @@
-# CLAUDE.md
-
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 ## Project Overview
 
 LLM Playground is an end-to-end system for building, training, evaluating, and serving Large Language Models from scratch. It uses only free-tier compute (Colab, Kaggle) and cloud services. The project is organized into phases:
@@ -109,6 +105,7 @@ All pipeline hyperparameters are in `data/configs/data_config.yaml`. No magic nu
 ## Pre-training Notes
 
 The `pretrain/model/train_gpt2_5BT.py` is a complete GPT-2 training script that:
+
 - Uses `torchrun` for DDP (multi-GPU) training
 - Implements GPT-2 architecture from scratch (CausalSelfAttention, MLP, Block)
 - Includes HellaSwag evaluation during training
