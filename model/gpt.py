@@ -125,7 +125,8 @@ class GPT(nn.Module):
         self,
         weight_decay: float,
         learning_rate: float,
-        device_type: str
+        device_type: str,
+        verbose=False
     ) -> torch.optim.AdamW:
         # All 2D params (weight matrices, embeddings) get weight decay
         # All 1D params (biases, LayerNorm) do not
@@ -137,6 +138,9 @@ class GPT(nn.Module):
         ]
         # Fused AdamW: single CUDA kernel, fewer memory round-trips
         use_fused = device_type == "cuda" and "fused" in dir(torch.optim.AdamW)
+        if verbose:
+            print(f"num decayed parameter tensors: ...")
+            print(f"using fused AdamW: {use_fused}")
         optimizer = torch.optim.AdamW(
             optim_groups,
             lr=learning_rate,

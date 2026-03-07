@@ -1,6 +1,9 @@
 /checkpoints
 /scratch
 
+model/eval/hellaswag/
+/log
+
 # Artifacts — stored on HuggingFace Hub, not git
 artifacts/
 *.bin
