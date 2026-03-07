@@ -10,8 +10,8 @@ model:
 training:
   total_batch_size: 524288
   micro_batch_size: 16
-  max_steps: 9537          # 9537 × 524288 ≈ 5B tokens
-  warmup_steps: 357        # 3.75% of max_steps
+  max_steps: 10681          # 10681 × 524288 ≈ 5.6B tokens
+  warmup_steps: 400        # 3.75% of max_steps
   max_lr: 6.0e-4
   min_lr: 6.0e-5
   val_interval: 250
@@ -22,3 +22,8 @@ paths:
   tokenizer: "artifacts/tokenizer.json"
   shards_dir: "artifacts/shards"
   log_dir: "log"
+
+logging:
+  wandb_project: "llm-playground"
+  wandb_run_name: "gpt-110M-5B-fineweb-edu"
+  wandb_enabled: true

@@ -19,11 +19,22 @@ from model.eval.hellaswag import evaluate_hellaswag
 from data.tokenizer.trainer import BPETokenizerTrainer
 
 import argparse
+import wandb
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--smoke", action="store_true", help="Fast local CPU smoke test")
 args = parser.parse_args()
 
+# ---------------------------------------------------------------------------
+# Load config
+# ---------------------------------------------------------------------------
+with open("model/configs/model_config.yaml") as f:
+    cfg = yaml.safe_load(f)
+
+mcfg  = cfg["model"]
+tcfg  = cfg["training"]
+paths = cfg["paths"]
+lcfg  = cfg.get("logging", {})
 
 # ---------------------------------------------------------------------------
 # DDP setup
@@ -57,14 +68,20 @@ if torch.cuda.is_available():
     torch.cuda.manual_seed(1337)
 
 # ---------------------------------------------------------------------------
+# Wandb
+# ---------------------------------------------------------------------------
+lcfg = cfg.get("logging", {})
+use_wandb = lcfg.get("wandb_enabled", False) and master_process
+if use_wandb:
+    wandb.init(
+        project=lcfg["wandb_project"],
+        name=lcfg["wandb_run_name"],
+        config={**mcfg, **tcfg},
+    )
+
+# ---------------------------------------------------------------------------
 # Hyperparameters
 # ---------------------------------------------------------------------------
-with open("model/configs/model_config.yaml") as f:
-    cfg = yaml.safe_load(f)
-
-mcfg  = cfg["model"]
-tcfg  = cfg["training"]
-paths = cfg["paths"]
 
 total_batch_size = tcfg["total_batch_size"]
 B                = tcfg["micro_batch_size"]
@@ -89,7 +106,7 @@ if args.smoke:
     hella_interval   = 999999   # skip hellaswag entirely on smoke
     ckpt_interval    = 999999
     print("⚠️  SMOKE TEST MODE — reduced batch, 5 steps only")
-    
+
 assert total_batch_size % (B * T * ddp_world_size) == 0, \
     "total_batch_size must be divisible by B * T * ddp_world_size"
 grad_accum_steps = total_batch_size // (B * T * ddp_world_size)
@@ -125,14 +142,14 @@ torch.set_float32_matmul_precision("high")
 model = GPT(GPTConfig(**mcfg))
 model.to(device)
 
+raw_model = model
+
 use_compile = device_type == "cuda"
 if use_compile:
     model = torch.compile(model)
 
 if ddp:
     model = DDP(model, device_ids=[ddp_local_rank])
-
-raw_model = model.module if ddp else model
 
 if master_process:
     total_params = sum(p.numel() for p in raw_model.parameters())
@@ -169,11 +186,13 @@ if master_process:
     open(log_file, "w").close()
 
 
-def log(msg: str) -> None:
+def log(msg: str, metrics: dict | None = None) -> None:
     if master_process:
         print(msg)
         with open(log_file, "a") as f:
             f.write(msg + "\n")
+        if use_wandb and metrics:
+            wandb.log(metrics)
 
 # ---------------------------------------------------------------------------
 # Training loop
@@ -197,7 +216,8 @@ for step in range(max_steps):
                 val_loss_accum += loss.detach() / val_steps
         if ddp:
             dist.all_reduce(val_loss_accum, op=dist.ReduceOp.AVG)
-        log(f"{step} val {val_loss_accum.item():.4f}")
+        log(f"{step} val {val_loss_accum.item():.4f}", 
+                {"val/loss": val_loss_accum.item(), "step": step})
 
     # ── Checkpoint ─────────────────────────────────────────────────────────
     if master_process and (step > 0 and step % ckpt_interval == 0 or last_step):
@@ -212,34 +232,15 @@ for step in range(max_steps):
         print(f"checkpoint saved → {ckpt_path}")
 
     # ── HellaSwag eval ─────────────────────────────────────────────────────
-    if (step % hella_interval == 0 or last_step) and not use_compile:
+    if step % hella_interval == 0 or last_step:
         if master_process:
             model.eval()
             results = evaluate_hellaswag(
                 raw_model, tokenizer, device,
                 max_examples=200,       # ~2s; set None for full 10,042
             )
-            log(f"{step} hella {results['acc_norm']:.4f}  ({results['num_total']} examples)")
-
-    # ── Generation sample ──────────────────────────────────────────────────
-    if (step > 0 and step % val_interval == 0 or last_step) and not use_compile:
-        if master_process:
-            model.eval()
-            prompt = "<|endoftext|>"
-            ids    = tokenizer.encode(prompt)
-            xgen   = torch.tensor(ids, dtype=torch.long, device=device).unsqueeze(0).repeat(2, 1)
-            rng    = torch.Generator(device=device)
-            rng.manual_seed(42)
-            with torch.no_grad():
-                while xgen.size(1) < 48:
-                    with torch.autocast(device_type=device_type, dtype=torch.bfloat16):
-                        logits, _ = raw_model(xgen)
-                    probs = torch.softmax(logits[:, -1, :], dim=-1)
-                    topk_probs, topk_idx = torch.topk(probs, 50, dim=-1)
-                    ix   = torch.multinomial(topk_probs, 1, generator=rng)
-                    xgen = torch.cat([xgen, torch.gather(topk_idx, -1, ix)], dim=1)
-            for i in range(2):
-                print(f"sample {i}: {tokenizer.decode(xgen[i].tolist())}")
+            log(f"{step} hella {results['acc_norm']:.4f}", 
+                    {"eval/hellaswag_acc_norm": results["acc_norm"], "step": step})
 
     # ── Training step ──────────────────────────────────────────────────────
     model.train()
@@ -271,7 +272,14 @@ for step in range(max_steps):
 
     dt  = time.time() - t0
     tps = B * T * grad_accum_steps * ddp_world_size / dt
-    log(f"{step} train {loss_accum.item():.6f} | lr {lr:.4e} | norm {norm:.4f} | {dt*1000:.0f}ms | {tps:.0f} tok/s")
+    log(
+        f"{step} train {loss_accum.item():.6f} | lr {lr:.4e} | norm {norm:.4f} | {dt*1000:.0f}ms | {tps:.0f} tok/s",
+        {"train/loss": loss_accum.item(), "train/lr": lr,
+         "train/grad_norm": norm.item(), "train/tok_per_sec": tps, "step": step}
+    )
+
+if use_wandb:
+    wandb.finish()
 
 if ddp:
     destroy_process_group()
