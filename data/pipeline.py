@@ -17,9 +17,24 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 logger = logging.getLogger(__name__)
 
+def _clean_stream(downloader, filter_pipeline, deduplicator, dedup_enabled=True):
+    passed = 0
+    for i, text in enumerate(downloader.iterate()):
+        if i % 100_000 == 0:
+            logger.info(f"  scanned {i:,} docs | clean so far: {passed:,}")
+        if not filter_pipeline.apply(text):
+            continue
+        if dedup_enabled and deduplicator.is_duplicate(text, doc_id=str(i)):
+            continue
+        passed += 1
+        yield text
+
 def run_pipeline(config_path: str, token: str = os.environ["HF_TOKEN"]):
+    token = token or os.environ["HF_TOKEN"]
+
     # ── Load Config ──────────────────────────────────
     with open(config_path) as f:
         cfg = yaml.safe_load(f)
@@ -27,7 +42,7 @@ def run_pipeline(config_path: str, token: str = os.environ["HF_TOKEN"]):
     ic = cfg["ingestion"]
     cc = cfg["cleaning"]
     tc = cfg["tokenizer"]
-    rc = cfg["registry"]
+    ac = cfg["artifacts"]
 
     # ── Step 1: Downloader ────────────────────────────
     logger.info("=== STEP 1: Data Ingestion ===")
@@ -65,35 +80,49 @@ def run_pipeline(config_path: str, token: str = os.environ["HF_TOKEN"]):
 
     # ── Step 3: Train Tokenizer ───────────────────────
     logger.info("=== STEP 3: Tokenizer Training ===")
-    trainer = BPETokenizerTrainer(
-        vocab_size=tc["vocab_size"],
-        min_frequency=tc["min_frequency"],
-        special_tokens=tc["special_tokens"]
-    ).train(iter(clean_docs))
-    saved_tokenizer_path = trainer.save(cfg["artifacts"]["tokenizer_path"])
+    tokenizer_path = ac["tokenizer_path"]
+    if os.path.exists(tokenizer_path):
+        logger.info(f"=== STEP 3: Tokenizer found at {tokenizer_path} — skipping training ===")
+        trainer = BPETokenizerTrainer.load(tokenizer_path)
+    else:
+        raise FileNotFoundError(
+            f"Tokenizer not found at {tokenizer_path}. "
+            "Train it first with: python -m data.tokenizer.trainer"
+        )
 
-    # ── Step 4: Encode Shards ─────────────────────────
-    logger.info("=== STEP 4: Shard Encoding ===")
+    # ── Step 4: Stream → encode shards ───────────────────────────────────
+    logger.info("=== STEP 4: Streaming Encode → Shards ===")
+    logger.info(f"  target: 50 shards × 100M tokens = 5B tokens")
+    os.makedirs(ac["shards_dir"], exist_ok=True)
+
     encoder = ShardEncoder(
         tokenizer=trainer,
-        output_dir=cfg["artifacts"]["shards_dir"],
-        shard_size=tc["shard_size_tokens"]
+        output_dir=ac["shards_dir"],
+        shard_size=tc["shard_size_tokens"],
     )
-    stats = encoder.encode_stream(iter(clean_docs))
+    stats = encoder.encode_stream(
+        _clean_stream(
+            downloader, filter_pipeline, deduplicator,
+            dedup_enabled=cc["dedup_enabled"]
+        )
+    )
     logger.info(f"Encoding complete: {stats}")
 
 
-    # ── Step 5: Push to HF Hub ────────────────────────
+    # ── Step 5: Push to HF Hub ────────────────────────────────────────────
     logger.info("=== STEP 5: Registry Push ===")
-    pusher = HFHubPusher(repo_id=cfg["registry"]["hf_repo_id"], token=os.environ["HF_TOKEN"])
+    pusher = HFHubPusher(repo_id=cfg["registry"]["hf_repo_id"], token=token)
     pusher.create_repo()
-    pusher.push_tokenizer(str(saved_tokenizer_path))
+    pusher.push_tokenizer(tokenizer_path)
     if cfg["registry"]["push_shards"]:
-        pusher.push_shards(cfg["artifacts"]["shards_dir"])
+        pusher.push_shards(ac["shards_dir"])
 
-    # ── Step 6: Final Report ──────────────────────────
-    logger.info("\n=== PIPELINE REPORT ===")
+    # ── Step 6: Report ────────────────────────────────────────────────────
+    logger.info("=== PIPELINE REPORT ===")
     logger.info(filter_pipeline.rejection_report())
-    logger.info(f"Dedup rate: {deduplicator.dedup_rate:.2%}")
-    logger.info(f"Total tokens: {stats['total_tokens']:,}")
-    logger.info(f"Num shards: {stats['num_shards']}")
+    logger.info(f"Dedup rate       : {deduplicator.dedup_rate:.2%}")
+    logger.info(f"Total tokens     : {stats['total_tokens']:,}")
+    logger.info(f"Shards written   : {stats['num_shards']}")
+
+if __name__ == "__main__":
+    run_pipeline("data/configs/data_config.yaml")

@@ -3,7 +3,7 @@
 ingestion:
   source: "HuggingFaceFW/fineweb-edu" # Dataset name on Hugging Face
   subset: "sample-10BT"               # 10 Billion token sample subset
-  num_samples: 50000                  # Number of samples to pull
+  num_samples: 6000000                  # Number of samples to pull
   text_column: "text"                 # Column name that holds raw text
   streaming: true                     # stream docs, never load full dataset to RAM
 
@@ -16,7 +16,7 @@ cleaning:
   max_symbol_to_word_ratio: 0.35          # max (symbol count / word count)
   max_bullet_lines_ratio: 0.9            # max fraction of lines starting with bullets
   min_alphanum_ratio: 0.7                # min fraction of alphanumeric chars in doc
-  dedup_enabled: true
+  dedup_enabled: false
   minhash_num_perm: 128                  # number of permutations for MinHash
   minhash_threshold: 0.85                # Jaccard similarity above this = duplicate
 
