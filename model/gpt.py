@@ -9,7 +9,7 @@ from torch.nn import functional as F
 
 @dataclass
 class GPTConfig:
-    vocab_size:     int  = 32064   # 32000 padded to multiple of 64
+    vocab_size:     int  = 50304   # 50257 padded to multiple of 64
     context_length: int  = 1024
     d_model:        int  = 768
     n_heads:        int  = 12
@@ -117,7 +117,8 @@ class GPT(nn.Module):
         if targets is not None:
             loss = F.cross_entropy(
                 logits.view(-1, logits.size(-1)),
-                targets.view(-1)
+                targets.view(-1),
+                ignore_index=-100
             )
         return logits, loss
 

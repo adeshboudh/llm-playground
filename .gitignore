@@ -1,5 +1,7 @@
 /checkpoints
 /scratch
+/rm_shards
+/ultrachat_shards
 
 model/eval/hellaswag/
 /log
@@ -7,6 +9,7 @@ model/eval/hellaswag/
 # Artifacts — stored on HuggingFace Hub, not git
 artifacts/
 *.bin
+*.npz
 *.pt
 *.safetensors
 

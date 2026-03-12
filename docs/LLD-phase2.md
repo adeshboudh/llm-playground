@@ -34,10 +34,8 @@ model/
 │   ├── hellaswag.py          # HellaSwag eval loop
 │   └── data/
 │       └── hellaswag_val.jsonl
-├── configs/
-│   └── model_config.yaml     # All hyperparameters
-└── scripts/
-    └── run_training.sh       # Lightning AI entrypoint
+└── configs/
+    └── model_config.yaml     # All hyperparameters
 ```
 
 ---
@@ -49,7 +47,7 @@ model/
 ```python
 @dataclass
 class GPTConfig:
-    vocab_size:     int   = 32064   # 32000 padded to nearest multiple of 64
+    vocab_size:     int   = 50304   # 50257 padded to nearest multiple of 64
     context_length: int   = 1024
     d_model:        int   = 768
     n_heads:        int   = 12
@@ -337,4 +335,3 @@ Remaining credits:   ~$4.44 buffer
 - [ ] W&B project `llm-playground` created and `wandb login` done
 - [ ] `model/train.py` smoke tested locally (10 steps, CPU)
 - [ ] Lightning AI studio set up with correct Python env
-- [ ] `run_training.sh` tested on Lightning AI (1 step)

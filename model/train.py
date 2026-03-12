@@ -16,7 +16,7 @@ from torch.distributed import init_process_group, destroy_process_group
 from model.gpt import GPT, GPTConfig
 from model.dataloader import DataLoaderLite
 from model.eval.hellaswag import evaluate_hellaswag
-from data.tokenizer.trainer import BPETokenizerTrainer
+from model.tokenizer_utils import get_tokenizer
 
 import argparse
 import wandb
@@ -94,7 +94,6 @@ val_interval     = tcfg["val_interval"]
 hella_interval   = tcfg["hella_interval"]
 ckpt_interval    = tcfg["ckpt_interval"]
 log_dir          = paths["log_dir"]
-TOKENIZER_PATH   = paths["tokenizer"]
 SHARDS_DIR       = paths["shards_dir"]
 
 if args.smoke:
@@ -118,9 +117,7 @@ if master_process:
 # ---------------------------------------------------------------------------
 # Tokenizer
 # ---------------------------------------------------------------------------
-tokenizer = BPETokenizerTrainer.load(TOKENIZER_PATH)
-assert tokenizer.vocab_size <= 32064, \
-    f"vocab_size mismatch: tokenizer has {tokenizer.vocab_size}, expected ≤32064"
+tokenizer = get_tokenizer()
 
 # ---------------------------------------------------------------------------
 # Data loaders
@@ -223,10 +220,10 @@ for step in range(max_steps):
     if master_process and (step > 0 and step % ckpt_interval == 0 or last_step):
         ckpt_path = os.path.join(log_dir, f"model_{step:05d}.pt")
         torch.save({
-            "model":    raw_model.state_dict(),
-            "config":   raw_model.config,
-            "step":     step,
-            "val_loss": val_loss_accum.item(),
+            "model":     raw_model.state_dict(),
+            "config":    vars(raw_model.config),    # ← plain dict, weights_only safe
+            "step":      step,
+            "val_loss":  val_loss_accum.item(),
             "optimizer": optimizer.state_dict(),
         }, ckpt_path)
         print(f"checkpoint saved → {ckpt_path}")
