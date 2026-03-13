@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>LLM Playground</title>
+  <style>
+    body { font-family: monospace; max-width: 800px; margin: 40px auto;
+           background: #0d1117; color: #c9d1d9; padding: 20px; }
+    h1   { color: #58a6ff; }
+    textarea, input[type=range], input[type=number] {
+      width: 100%; background: #161b22; color: #c9d1d9;
+      border: 1px solid #30363d; border-radius: 6px; padding: 8px;
+      font-family: monospace; font-size: 14px;
+    }
+    textarea { height: 120px; resize: vertical; }
+    #output  { min-height: 150px; background: #161b22; border: 1px solid #30363d;
+               border-radius: 6px; padding: 12px; white-space: pre-wrap;
+               font-size: 14px; margin-top: 10px; }
+    button   { background: #238636; color: white; border: none;
+               padding: 10px 24px; border-radius: 6px; cursor: pointer;
+               font-size: 14px; margin-top: 8px; }
+    button:hover { background: #2ea043; }
+    label { font-size: 13px; color: #8b949e; }
+    .controls { display: flex; gap: 20px; margin: 10px 0; }
+    .control  { flex: 1; }
+  </style>
+</head>
+<body>
+  <h1>🤖 LLM Playground</h1>
+  <p style="color:#8b949e">GPT-2 124M • SFT + GRPO (LoRA)</p>
+
+  <label>Prompt</label>
+  <textarea id="prompt" placeholder="Ask something...">What is the capital of France?</textarea>
+
+  <div class="controls">
+    <div class="control">
+      <label>Max tokens: <span id="tok-val">100</span></label>
+      <input type="range" id="max_tokens" min="20" max="200" value="100"
+             oninput="document.getElementById('tok-val').textContent=this.value">
+    </div>
+    <div class="control">
+      <label>Temperature: <span id="temp-val">0.8</span></label>
+      <input type="range" id="temperature" min="0.1" max="1.5" step="0.1" value="0.8"
+             oninput="document.getElementById('temp-val').textContent=this.value">
+    </div>
+  </div>
+
+  <button onclick="generate()">Generate ▶</button>
+  <button onclick="clear_output()" style="background:#da3633">Clear</button>
+
+  <div id="output">Output will appear here...</div>
+
+  <script>
+    async function generate() {
+        const prompt      = document.getElementById("prompt").value.trim();
+        const max_tokens  = parseInt(document.getElementById("max_tokens").value);
+        const temperature = parseFloat(document.getElementById("temperature").value);
+        const output      = document.getElementById("output");
+
+        if (!prompt) { output.textContent = "Please enter a prompt."; return; }
+        output.textContent = "";
+
+        // ← explicit Content-Type + JSON.stringify — no ambiguity
+        const res = await fetch("/generate", {
+            method:  "POST",
+            headers: { "Content-Type": "application/json" },
+            body:    JSON.stringify({ prompt, max_tokens, temperature })
+        });
+
+        if (!res.ok) {
+            output.textContent = `Error: ${res.status} ${res.statusText}`;
+            return;
+        }
+
+        const reader  = res.body.getReader();
+        const decoder = new TextDecoder();
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            output.textContent += decoder.decode(value, { stream: true });
+        }
+    }
+  </script>
+</body>
+</html>

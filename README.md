@@ -31,6 +31,7 @@ pytest data/tests/test_filters.py::TestLengthFilter::test_rejects_text_below_min
 
 ```bash
 pip install -r requirements.txt
+uvicorn serve.app:app --host 0.0.0.0 --port 8000
 ```
 
 ## Architecture
@@ -56,11 +57,26 @@ llm-playground/
 └── artifacts/               # Generated tokenizer, shards
 ```
 
-### Data Pipeline Flow
+## Stack
+
+| Phase    | Component                          | Details                       |
+| -------- | ---------------------------------- | ----------------------------- |
+| Data     | FineWeb scraper + BPE tokenizer    | Custom filters, MinHash dedup |
+| Pretrain | GPT-2 124M from scratch            | Trained on FineWeb            |
+| SFT      | LoRA fine-tuning                   | UltraChat 200k                |
+| RM       | Reward Model                       | GPT-2 + scalar head, hh-rlhf  |
+| GRPO     | Group Relative Policy Optimization | G=4, 300 steps, KL-anchored   |
+| Serve    | FastAPI + streaming                | Browser playground            |
+
+## Pipeline order
 
 ```
-Raw HF Dataset → DatasetDownloader → FilterPipeline → MinHashDeduplicator
-    → BPETokenizerTrainer → ShardEncoder → HFHubPusher
+1. data/fineweb.py          → scrape + filter
+2. pretrain/train_gpt2.py   → pretrain
+3. posttrain/sft/           → SFT with LoRA
+4. posttrain/reward_model/  → train RM
+5. posttrain/rl/            → GRPO
+6. serve/app.py             → FastAPI playground
 ```
 
 ### Key Design Patterns

@@ -1,0 +1,20 @@
+What is the capital of France?
+Explain what machine learning is in simple terms.
+Write a Python function to reverse a string.
+What causes rain?
+How does a computer processor work?
+What is the difference between a list and a tuple in Python?
+Explain the concept of gravity.
+What is the French Revolution?
+How do you make pasta?
+What is photosynthesis?
+Describe the water cycle.
+What is recursion in programming?
+How does the internet work?
+What is inflation?
+Write a function to check if a number is prime.
+What is DNA?
+Explain object-oriented programming.
+What are the causes of World War 1?
+How do vaccines work?
+What is the speed of light?
