@@ -5,7 +5,7 @@
 
 model/eval/hellaswag/
 /log
-model/gpt2_grpo_merged
+/model/gpt2_grpo_merged
 
 # Artifacts — stored on HuggingFace Hub, not git
 artifacts/
